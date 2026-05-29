@@ -1,0 +1,28 @@
+R_DEF: Internal format may change without notice
+local
+drawable channel_placeholder
+drawable empty_loading
+drawable empty_no_favorites
+drawable empty_no_results
+drawable feature_graphic
+drawable ic_category_all
+drawable ic_category_entertainment
+drawable ic_category_kids
+drawable ic_category_movies
+drawable ic_category_music
+drawable ic_category_news
+drawable ic_category_sports
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+drawable ic_notification
+drawable onboarding_categories
+drawable onboarding_watch_anywhere
+drawable onboarding_welcome
+drawable splash_logo
+drawable watermark_logo
+mipmap ic_launcher
+mipmap ic_launcher_background
+mipmap ic_launcher_foreground
+string app_name
+style Theme.FreeIPTV
+xml network_security_config

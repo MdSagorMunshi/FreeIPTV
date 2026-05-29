@@ -1,0 +1,150 @@
+[
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_watermark_logo.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/watermark_logo.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_music.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_music.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_onboarding_welcome.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/onboarding_welcome.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_onboarding_watch_anywhere.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/onboarding_watch_anywhere.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxxhdpi_ic_launcher_background.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxxhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxhdpi_ic_launcher_background.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_kids.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_kids.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-hdpi_ic_launcher_background.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-hdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_feature_graphic.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/feature_graphic.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_empty_no_results.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/empty_no_results.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-mdpi_ic_launcher_background.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-mdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/xml_network_security_config.xml.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/xml/network_security_config.xml"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_movies.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_movies.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xhdpi_ic_launcher_background.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xhdpi/ic_launcher_background.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_channel_placeholder.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/channel_placeholder.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_splash_logo.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/splash_logo.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_news.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_news.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_notification.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_notification.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_all.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_all.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_sports.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_sports.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_onboarding_categories.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/onboarding_categories.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_empty_loading.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/empty_loading.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_empty_no_favorites.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/empty_no_favorites.png"
+    },
+    {
+        "merged": "com.ryanshelby.iptv.app-debug-57:/drawable-nodpi_ic_category_entertainment.png.flat",
+        "source": "com.ryanshelby.iptv.app-main-59:/drawable-nodpi/ic_category_entertainment.png"
+    }
+]
