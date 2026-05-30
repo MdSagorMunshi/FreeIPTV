@@ -155,8 +155,8 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             AboutItemCard(
                 icon = Icons.Default.Language,
                 title = "Website",
-                subtitle = "https://freetptv.pages.dev",
-                onClick = { openUrl(context, "https://freetptv.pages.dev") }
+                subtitle = "https://freeiptvapp.pages.dev/",
+                onClick = { openUrl(context, "https://freeiptvapp.pages.dev/") }
             )
 
             AboutItemCard(
