@@ -20,6 +20,18 @@
 - **Premium Player:** Uses AndroidX Media3 ExoPlayer for flawless, low-latency streaming and background play support.
 - **Auto-Updates:** Built-in update checking to ensure you always have the latest version.
 
+## 📝 Changelog
+
+### v2.0.0 (May 30, 2026)
+- **New Feature:** Added seamless Picture-in-Picture (PiP) support for background viewing.
+- **New Feature:** Added an in-app Changelog viewer on the About page.
+- **Improvement:** Added a stylish, rounded notification icon for the foreground playback service.
+- **Fix:** Fixed a major issue causing a black screen on streams that use query parameters.
+- **Fix:** Added missing User-Agent headers to ensure maximum compatibility with global IPTV providers.
+
+### v1.0.0
+- Initial release.
+
 ## 🛠 Tech Stack
 
 - **Language:** [Kotlin 1.9.20](https://kotlinlang.org/)

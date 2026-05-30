@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import android.widget.Toast
@@ -63,6 +64,8 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             viewModel.clearToast()
         }
     }
+
+    var showChangelog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -122,6 +125,12 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
+            
+            Text(
+                "Last Updated: May 30, 2026",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -168,6 +177,13 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 }
             )
 
+            AboutItemCard(
+                icon = Icons.Default.Info,
+                title = "Changelog",
+                subtitle = "See what's new in version $appVersion",
+                onClick = { showChangelog = true }
+            )
+
             Spacer(modifier = Modifier.height(48.dp))
             
             Text(
@@ -177,6 +193,34 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 modifier = Modifier.padding(bottom = 24.dp)
             )
         }
+    }
+
+    if (showChangelog) {
+        AlertDialog(
+            onDismissRequest = { showChangelog = false },
+            title = { Text("Changelog (v$appVersion)") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("v2.0.0 (May 30, 2026)", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("• Added seamless Picture-in-Picture (PiP) support", color = TextSecondary)
+                    Text("• Added beautiful rounded PiP notification icon", color = TextSecondary)
+                    Text("• Fixed black screen issues for streams with query parameters", color = TextSecondary)
+                    Text("• Added standard User-Agent header for wider stream compatibility", color = TextSecondary)
+                    Text("• Added in-app Changelog viewer", color = TextSecondary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("v1.0.0", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("• Initial release", color = TextSecondary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showChangelog = false }) {
+                    Text("Close")
+                }
+            },
+            containerColor = DarkCard,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary
+        )
     }
 }
 
