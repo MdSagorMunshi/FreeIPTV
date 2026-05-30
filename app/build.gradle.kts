@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
@@ -30,6 +31,10 @@ android {
             storePassword = keystoreProperties.getProperty("RELEASE_STORE_PASSWORD") ?: ""
             keyAlias = keystoreProperties.getProperty("RELEASE_KEY_ALIAS") ?: "release"
             keyPassword = keystoreProperties.getProperty("RELEASE_KEY_PASSWORD") ?: ""
+            enableV4Signing = true
+        }
+        getByName("debug") {
+            enableV4Signing = true
         }
     }
 
@@ -83,4 +88,30 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+}
+
+tasks.whenTaskAdded {
+    val taskName = name
+    if (taskName == "assembleRelease" || taskName == "assembleDebug") {
+        doLast {
+            val variant = if (taskName == "assembleRelease") "release" else "debug"
+            val apkDir = File(layout.buildDirectory.get().asFile, "outputs/apk/$variant")
+            if (apkDir.exists()) {
+                apkDir.listFiles()?.filter { it.name.endsWith(".apk") }?.forEach { apkFile ->
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    val buffer = ByteArray(8192)
+                    apkFile.inputStream().use { fis ->
+                        var bytesRead: Int
+                        while (fis.read(buffer).also { bytesRead = it } != -1) {
+                            digest.update(buffer, 0, bytesRead)
+                        }
+                    }
+                    val hash = digest.digest().joinToString("") { "%02x".format(it) }
+                    val sha256File = File("${apkFile.absolutePath}.sha256")
+                    sha256File.writeText("$hash  ${apkFile.name}")
+                    println("--> Generated SHA-256 checksum: ${sha256File.name}")
+                }
+            }
+        }
+    }
 }
