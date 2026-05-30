@@ -1,8 +1,17 @@
 package com.ryanshelby.iptv
 
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,18 +29,56 @@ import com.ryanshelby.iptv.ui.screens.SplashScreen
 import com.ryanshelby.iptv.ui.screens.AboutScreen
 import com.ryanshelby.iptv.ui.theme.FreeIPTVTheme
 import com.ryanshelby.iptv.viewmodel.MainViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 private const val PREFS_NAME = "freeiptv_prefs"
 private const val KEY_ONBOARDING_DONE = "onboarding_done"
 
+private const val ACTION_PIP_CONTROL = "com.ryanshelby.iptv.PIP_CONTROL"
+private const val EXTRA_CONTROL_TYPE = "control_type"
+private const val CONTROL_PLAY_PAUSE = 1
+
 class MainActivity : ComponentActivity() {
+
+    private val _isInPipMode = MutableStateFlow(false)
+    private val isInPipMode = _isInPipMode.asStateFlow()
+
+    // Track whether the player is currently showing so we can auto-PiP on Home press
+    private var isPlayerActive = false
+
+    // Callback to toggle play/pause from PiP remote action
+    private var onPipPlayPause: (() -> Unit)? = null
+
+    // Track current playing state for PiP action icon updates
+    private var isCurrentlyPlaying = true
+
+    private val pipReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_PIP_CONTROL) {
+                when (intent.getIntExtra(EXTRA_CONTROL_TYPE, -1)) {
+                    CONTROL_PLAY_PAUSE -> onPipPlayPause?.invoke()
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Register PiP control receiver
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(pipReceiver, IntentFilter(ACTION_PIP_CONTROL), RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(pipReceiver, IntentFilter(ACTION_PIP_CONTROL))
+        }
+
         enableEdgeToEdge()
         setContent {
             FreeIPTVTheme {
                 val viewModel: MainViewModel = viewModel()
                 val state by viewModel.state.collectAsState()
+                val pipMode by isInPipMode.collectAsState()
 
                 val prefs = remember { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
                 val onboardingDone = remember { prefs.getBoolean(KEY_ONBOARDING_DONE, false) }
@@ -80,6 +127,11 @@ class MainActivity : ComponentActivity() {
                 }
                 var showPlayer by remember { mutableStateOf(false) }
 
+                // Sync showPlayer state to the Activity-level flag for PiP
+                LaunchedEffect(showPlayer) {
+                    isPlayerActive = showPlayer
+                }
+
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
@@ -126,7 +178,18 @@ class MainActivity : ComponentActivity() {
                                         onNext = { viewModel.nextChannel() },
                                         onPrev = { viewModel.prevChannel() },
                                         channelIndex = state.currentIndex,
-                                        totalChannels = state.filteredChannels.size
+                                        totalChannels = state.filteredChannels.size,
+                                        isInPipMode = pipMode,
+                                        onEnterPip = { enterPipMode() },
+                                        onRegisterPlayPauseCallback = { callback ->
+                                            onPipPlayPause = callback
+                                        },
+                                        onPlayingStateChanged = { playing ->
+                                            isCurrentlyPlaying = playing
+                                            if (_isInPipMode.value) {
+                                                updatePipActions(playing)
+                                            }
+                                        }
                                     )
                                 } else {
                                     HomeScreen(
@@ -151,6 +214,62 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    fun enterPipMode() {
+        val params = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(buildPipActions(isCurrentlyPlaying))
+            .build()
+        enterPictureInPictureMode(params)
+    }
+
+    private fun updatePipActions(isPlaying: Boolean) {
+        val params = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(buildPipActions(isPlaying))
+            .build()
+        setPictureInPictureParams(params)
+    }
+
+    private fun buildPipActions(isPlaying: Boolean): List<RemoteAction> {
+        val intent = Intent(ACTION_PIP_CONTROL).apply {
+            putExtra(EXTRA_CONTROL_TYPE, CONTROL_PLAY_PAUSE)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, CONTROL_PLAY_PAUSE, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val iconRes = if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val title = if (isPlaying) "Pause" else "Play"
+        val action = RemoteAction(
+            Icon.createWithResource(this, iconRes),
+            title, title, pendingIntent
+        )
+        return listOf(action)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        // Auto-enter PiP when user presses Home while watching video
+        if (isPlayerActive) {
+            enterPipMode()
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        _isInPipMode.value = isInPictureInPictureMode
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(pipReceiver)
+        } catch (_: Exception) {}
     }
 }
 

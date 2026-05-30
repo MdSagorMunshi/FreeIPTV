@@ -56,14 +56,20 @@ fun PlayerScreen(
     onNext: () -> Unit,
     onPrev: () -> Unit,
     channelIndex: Int,
-    totalChannels: Int
+    totalChannels: Int,
+    isInPipMode: Boolean = false,
+    onEnterPip: () -> Unit = {},
+    onRegisterPlayPauseCallback: (((() -> Unit)?) -> Unit)? = null,
+    onPlayingStateChanged: ((Boolean) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
 
-    // Force landscape
-    DisposableEffect(Unit) {
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+    // Force landscape only when NOT in PiP
+    DisposableEffect(isInPipMode) {
+        if (!isInPipMode) {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
         activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -103,10 +109,24 @@ fun PlayerScreen(
     var aspectMode by remember { mutableIntStateOf(0) }
     val aspectModes = listOf("Fit", "Fill", "Zoom")
 
-    // Auto-hide controls
-    LaunchedEffect(showControls) {
-        if (showControls && !isLocked) {
+    // Register play/pause callback for PiP remote actions
+    LaunchedEffect(Unit) {
+        onRegisterPlayPauseCallback?.invoke {
+            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+        }
+    }
+
+    // Auto-hide controls (disabled in PiP mode)
+    LaunchedEffect(showControls, isInPipMode) {
+        if (showControls && !isLocked && !isInPipMode) {
             delay(4000)
+            showControls = false
+        }
+    }
+
+    // Hide controls when entering PiP
+    LaunchedEffect(isInPipMode) {
+        if (isInPipMode) {
             showControls = false
         }
     }
@@ -114,7 +134,10 @@ fun PlayerScreen(
     // Listen for player state changes
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+                onPlayingStateChanged?.invoke(playing)
+            }
         }
         exoPlayer.addListener(listener)
         onDispose { exoPlayer.removeListener(listener) }
@@ -144,229 +167,236 @@ fun PlayerScreen(
             }
         )
 
-        // Watermark branding — semi-transparent logo in top-right corner
-        Image(
-            painter = painterResource(R.drawable.watermark_logo),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 12.dp)
-                .size(28.dp)
-                .alpha(0.12f),
-            contentScale = ContentScale.Fit
-        )
+        // Everything below is hidden in PiP mode for a clean mini player
+        if (!isInPipMode) {
+            // Watermark branding — semi-transparent logo in top-right corner
+            Image(
+                painter = painterResource(R.drawable.watermark_logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 12.dp, end = 12.dp)
+                    .size(28.dp)
+                    .alpha(0.12f),
+                contentScale = ContentScale.Fit
+            )
 
-        // Gesture layer
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .pointerInput(isLocked) {
-                    if (isLocked) {
-                        detectTapGestures { showControls = !showControls }
-                        return@pointerInput
-                    }
-                    detectTapGestures(
-                        onTap = { showControls = !showControls },
-                        onDoubleTap = { offset ->
-                            val half = size.width / 2
-                            if (offset.x < half) {
-                                exoPlayer.seekBack()
-                                seekIndicator = "-10s"
-                            } else {
-                                exoPlayer.seekForward()
-                                seekIndicator = "+10s"
-                            }
-                        }
-                    )
-                }
-                .pointerInput(isLocked) {
-                    if (isLocked) return@pointerInput
-                    detectVerticalDragGestures { change, dragAmount ->
-                        val x = change.position.x
-                        val half = size.width / 2f
-                        val sensitivity = 0.005f
-                        if (x > half) {
-                            // Right side: Volume
-                            volumeLevel = (volumeLevel - dragAmount * sensitivity).coerceIn(0f, 1f)
-                            audioManager.setStreamVolume(
-                                AudioManager.STREAM_MUSIC,
-                                (volumeLevel * maxVolume).toInt(),
-                                0
-                            )
-                            showVolumeIndicator = true
-                        } else {
-                            // Left side: Brightness
-                            brightnessLevel = (brightnessLevel - dragAmount * sensitivity).coerceIn(0f, 1f)
-                            activity?.window?.attributes = activity?.window?.attributes?.apply {
-                                screenBrightness = brightnessLevel
-                            }
-                            showBrightnessIndicator = true
-                        }
-                    }
-                }
-        )
-
-        // Seek indicator
-        AnimatedVisibility(
-            visible = seekIndicator != null,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut(),
-            modifier = Modifier.align(Alignment.Center)
-        ) {
-            LaunchedEffect(seekIndicator) {
-                delay(700)
-                seekIndicator = null
-            }
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Color.Black.copy(alpha = 0.7f)
-            ) {
-                Text(
-                    seekIndicator ?: "",
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                    color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp
-                )
-            }
-        }
-
-        // Volume indicator
-        GestureIndicator(
-            visible = showVolumeIndicator,
-            icon = Icons.Default.VolumeUp,
-            level = volumeLevel,
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp),
-            onHide = { showVolumeIndicator = false }
-        )
-
-        // Brightness indicator
-        GestureIndicator(
-            visible = showBrightnessIndicator,
-            icon = Icons.Default.LightMode,
-            level = brightnessLevel,
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp),
-            onHide = { showBrightnessIndicator = false }
-        )
-
-        // Controls overlay
-        AnimatedVisibility(
-            visible = showControls,
-            enter = fadeIn(tween(200)),
-            exit = fadeOut(tween(300))
-        ) {
+            // Gesture layer
             Box(
                 modifier = Modifier.fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Black.copy(0.6f), Color.Transparent, Color.Transparent, Color.Black.copy(0.7f))
-                        )
-                    )
-            ) {
-                if (isLocked) {
-                    // Locked - show only unlock button
-                    IconButton(
-                        onClick = { isLocked = false },
-                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
-                    ) {
-                        Icon(Icons.Default.LockOpen, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                    }
-                } else {
-                    // Top bar
-                    Row(
-                        modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
-                            .padding(top = 8.dp, start = 8.dp, end = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                    .pointerInput(isLocked) {
+                        if (isLocked) {
+                            detectTapGestures { showControls = !showControls }
+                            return@pointerInput
                         }
-                        Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                            Text(
-                                channel?.name ?: "", color = Color.White,
-                                fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                "${channelIndex + 1} / $totalChannels",
-                                color = Color.White.copy(0.6f), fontSize = 12.sp
-                            )
-                        }
-                        // Lock
-                        IconButton(onClick = { isLocked = true }) {
-                            Icon(Icons.Default.Lock, null, tint = Color.White)
-                        }
-                        // Aspect
-                        TextButton(onClick = { aspectMode = (aspectMode + 1) % 3 }) {
-                            Text(aspectModes[aspectMode], color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                        // Speed
-                        Box {
-                            TextButton(onClick = { showSpeedMenu = true }) {
-                                Text("${playbackSpeed}x", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        detectTapGestures(
+                            onTap = { showControls = !showControls },
+                            onDoubleTap = { offset ->
+                                val half = size.width / 2
+                                if (offset.x < half) {
+                                    exoPlayer.seekBack()
+                                    seekIndicator = "-10s"
+                                } else {
+                                    exoPlayer.seekForward()
+                                    seekIndicator = "+10s"
+                                }
                             }
-                            DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }) {
-                                listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
-                                    DropdownMenuItem(
-                                        text = { Text("${speed}x") },
-                                        onClick = {
-                                            playbackSpeed = speed
-                                            exoPlayer.setPlaybackSpeed(speed)
-                                            showSpeedMenu = false
-                                        }
-                                    )
+                        )
+                    }
+                    .pointerInput(isLocked) {
+                        if (isLocked) return@pointerInput
+                        detectVerticalDragGestures { change, dragAmount ->
+                            val x = change.position.x
+                            val half = size.width / 2f
+                            val sensitivity = 0.005f
+                            if (x > half) {
+                                // Right side: Volume
+                                volumeLevel = (volumeLevel - dragAmount * sensitivity).coerceIn(0f, 1f)
+                                audioManager.setStreamVolume(
+                                    AudioManager.STREAM_MUSIC,
+                                    (volumeLevel * maxVolume).toInt(),
+                                    0
+                                )
+                                showVolumeIndicator = true
+                            } else {
+                                // Left side: Brightness
+                                brightnessLevel = (brightnessLevel - dragAmount * sensitivity).coerceIn(0f, 1f)
+                                activity?.window?.attributes = activity?.window?.attributes?.apply {
+                                    screenBrightness = brightnessLevel
+                                }
+                                showBrightnessIndicator = true
+                            }
+                        }
+                    }
+            )
+
+            // Seek indicator
+            AnimatedVisibility(
+                visible = seekIndicator != null,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut(),
+                modifier = Modifier.align(Alignment.Center)
+            ) {
+                LaunchedEffect(seekIndicator) {
+                    delay(700)
+                    seekIndicator = null
+                }
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color.Black.copy(alpha = 0.7f)
+                ) {
+                    Text(
+                        seekIndicator ?: "",
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+                        color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp
+                    )
+                }
+            }
+
+            // Volume indicator
+            GestureIndicator(
+                visible = showVolumeIndicator,
+                icon = Icons.Default.VolumeUp,
+                level = volumeLevel,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp),
+                onHide = { showVolumeIndicator = false }
+            )
+
+            // Brightness indicator
+            GestureIndicator(
+                visible = showBrightnessIndicator,
+                icon = Icons.Default.LightMode,
+                level = brightnessLevel,
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp),
+                onHide = { showBrightnessIndicator = false }
+            )
+
+            // Controls overlay
+            AnimatedVisibility(
+                visible = showControls,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(300))
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Black.copy(0.6f), Color.Transparent, Color.Transparent, Color.Black.copy(0.7f))
+                            )
+                        )
+                ) {
+                    if (isLocked) {
+                        // Locked - show only unlock button
+                        IconButton(
+                            onClick = { isLocked = false },
+                            modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
+                        ) {
+                            Icon(Icons.Default.LockOpen, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                        }
+                    } else {
+                        // Top bar
+                        Row(
+                            modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter)
+                                .padding(top = 8.dp, start = 8.dp, end = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                            }
+                            Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                                Text(
+                                    channel?.name ?: "", color = Color.White,
+                                    fontWeight = FontWeight.SemiBold, fontSize = 16.sp,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    "${channelIndex + 1} / $totalChannels",
+                                    color = Color.White.copy(0.6f), fontSize = 12.sp
+                                )
+                            }
+                            // PiP button
+                            IconButton(onClick = onEnterPip) {
+                                Icon(Icons.Default.PictureInPicture, "Mini Player", tint = Color.White)
+                            }
+                            // Lock
+                            IconButton(onClick = { isLocked = true }) {
+                                Icon(Icons.Default.Lock, null, tint = Color.White)
+                            }
+                            // Aspect
+                            TextButton(onClick = { aspectMode = (aspectMode + 1) % 3 }) {
+                                Text(aspectModes[aspectMode], color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                            // Speed
+                            Box {
+                                TextButton(onClick = { showSpeedMenu = true }) {
+                                    Text("${playbackSpeed}x", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }) {
+                                    listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
+                                        DropdownMenuItem(
+                                            text = { Text("${speed}x") },
+                                            onClick = {
+                                                playbackSpeed = speed
+                                                exoPlayer.setPlaybackSpeed(speed)
+                                                showSpeedMenu = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Center controls
-                    Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(32.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Previous
-                        IconButton(onClick = onPrev, Modifier.size(48.dp)) {
-                            Icon(Icons.Default.SkipPrevious, null, Modifier.size(36.dp), tint = Color.White)
-                        }
-                        // Rewind
-                        IconButton(onClick = { exoPlayer.seekBack() }, Modifier.size(48.dp)) {
-                            Icon(Icons.Default.Replay10, null, Modifier.size(32.dp), tint = Color.White)
-                        }
-                        // Play/Pause
-                        FilledIconButton(
-                            onClick = { if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play() },
-                            modifier = Modifier.size(64.dp),
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Purple40)
+                        // Center controls
+                        Row(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalArrangement = Arrangement.spacedBy(32.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                null, Modifier.size(36.dp), tint = Color.White
+                            // Previous
+                            IconButton(onClick = onPrev, Modifier.size(48.dp)) {
+                                Icon(Icons.Default.SkipPrevious, null, Modifier.size(36.dp), tint = Color.White)
+                            }
+                            // Rewind
+                            IconButton(onClick = { exoPlayer.seekBack() }, Modifier.size(48.dp)) {
+                                Icon(Icons.Default.Replay10, null, Modifier.size(32.dp), tint = Color.White)
+                            }
+                            // Play/Pause
+                            FilledIconButton(
+                                onClick = { if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play() },
+                                modifier = Modifier.size(64.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Purple40)
+                            ) {
+                                Icon(
+                                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    null, Modifier.size(36.dp), tint = Color.White
+                                )
+                            }
+                            // Forward
+                            IconButton(onClick = { exoPlayer.seekForward() }, Modifier.size(48.dp)) {
+                                Icon(Icons.Default.Forward10, null, Modifier.size(32.dp), tint = Color.White)
+                            }
+                            // Next
+                            IconButton(onClick = onNext, Modifier.size(48.dp)) {
+                                Icon(Icons.Default.SkipNext, null, Modifier.size(36.dp), tint = Color.White)
+                            }
+                        }
+
+                        // Bottom bar
+                        Row(
+                            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
+                                .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(LiveRed))
+                                Spacer(Modifier.width(6.dp))
+                                Text("LIVE", color = LiveRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                            Text(
+                                channel?.group ?: "", color = Color.White.copy(0.5f), fontSize = 12.sp
                             )
                         }
-                        // Forward
-                        IconButton(onClick = { exoPlayer.seekForward() }, Modifier.size(48.dp)) {
-                            Icon(Icons.Default.Forward10, null, Modifier.size(32.dp), tint = Color.White)
-                        }
-                        // Next
-                        IconButton(onClick = onNext, Modifier.size(48.dp)) {
-                            Icon(Icons.Default.SkipNext, null, Modifier.size(36.dp), tint = Color.White)
-                        }
-                    }
-
-                    // Bottom bar
-                    Row(
-                        modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp, start = 16.dp, end = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(8.dp).clip(CircleShape).background(LiveRed))
-                            Spacer(Modifier.width(6.dp))
-                            Text("LIVE", color = LiveRed, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        Text(
-                            channel?.group ?: "", color = Color.White.copy(0.5f), fontSize = 12.sp
-                        )
                     }
                 }
             }
