@@ -3,9 +3,13 @@ package com.ryanshelby.iptv.ui.screens
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.os.Build
 import android.provider.Settings
 import android.view.WindowManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -43,6 +47,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.ryanshelby.iptv.PlaybackService
 import com.ryanshelby.iptv.R
 import com.ryanshelby.iptv.data.Channel
 import com.ryanshelby.iptv.ui.theme.*
@@ -60,10 +65,14 @@ fun PlayerScreen(
     isInPipMode: Boolean = false,
     onEnterPip: () -> Unit = {},
     onRegisterPlayPauseCallback: (((() -> Unit)?) -> Unit)? = null,
+    onRegisterGoLiveCallback: (((() -> Unit)?) -> Unit)? = null,
     onPlayingStateChanged: ((Boolean) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
+
+    // Keep an always-updated reference to channel for use in callbacks
+    val currentChannel by rememberUpdatedState(channel)
 
     // Force landscape only when NOT in PiP
     DisposableEffect(isInPipMode) {
@@ -93,7 +102,13 @@ fun PlayerScreen(
         }
     }
 
-    DisposableEffect(Unit) { onDispose { exoPlayer.release() } }
+    // Stop service and release player on dispose
+    DisposableEffect(Unit) {
+        onDispose {
+            PlaybackService.stop(context)
+            exoPlayer.release()
+        }
+    }
 
     // Player state
     var isPlaying by remember { mutableStateOf(true) }
@@ -109,10 +124,43 @@ fun PlayerScreen(
     var aspectMode by remember { mutableIntStateOf(0) }
     val aspectModes = listOf("Fit", "Fill", "Zoom")
 
-    // Register play/pause callback for PiP remote actions
+    // Register play/pause callback for PiP remote actions and notification
     LaunchedEffect(Unit) {
         onRegisterPlayPauseCallback?.invoke {
             if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+        }
+    }
+
+    // Register Go Live callback — reloads the stream to get back to real-time
+    LaunchedEffect(Unit) {
+        onRegisterGoLiveCallback?.invoke {
+            currentChannel?.url?.let { url ->
+                exoPlayer.setMediaItem(MediaItem.fromUri(url))
+                exoPlayer.prepare()
+                exoPlayer.play()
+            }
+        }
+    }
+
+    // Request notification permission (Android 13+)
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or not, we still try to show notification */ }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
+
+    // Start/update notification service when channel loads or changes
+    LaunchedEffect(channel?.url, channel?.name) {
+        channel?.let {
+            PlaybackService.start(context, it.name, it.group, true)
         }
     }
 
@@ -131,12 +179,16 @@ fun PlayerScreen(
         }
     }
 
-    // Listen for player state changes
+    // Listen for player state changes + update notification
     DisposableEffect(exoPlayer) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 onPlayingStateChanged?.invoke(playing)
+                // Update notification with current play/pause state
+                currentChannel?.let {
+                    PlaybackService.start(context, it.name, it.group, playing)
+                }
             }
         }
         exoPlayer.addListener(listener)

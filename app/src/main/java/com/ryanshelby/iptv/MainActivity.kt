@@ -47,18 +47,25 @@ class MainActivity : ComponentActivity() {
     // Track whether the player is currently showing so we can auto-PiP on Home press
     private var isPlayerActive = false
 
-    // Callback to toggle play/pause from PiP remote action
+    // Callback to toggle play/pause from PiP remote action or notification
     private var onPipPlayPause: (() -> Unit)? = null
+
+    // Callback to reload the channel (Go Live from notification)
+    private var onGoLive: (() -> Unit)? = null
 
     // Track current playing state for PiP action icon updates
     private var isCurrentlyPlaying = true
 
-    private val pipReceiver = object : BroadcastReceiver() {
+    private val mediaReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_PIP_CONTROL) {
-                when (intent.getIntExtra(EXTRA_CONTROL_TYPE, -1)) {
-                    CONTROL_PLAY_PAUSE -> onPipPlayPause?.invoke()
+            when (intent?.action) {
+                ACTION_PIP_CONTROL -> {
+                    when (intent.getIntExtra(EXTRA_CONTROL_TYPE, -1)) {
+                        CONTROL_PLAY_PAUSE -> onPipPlayPause?.invoke()
+                    }
                 }
+                PlaybackService.ACTION_PLAY_PAUSE -> onPipPlayPause?.invoke()
+                PlaybackService.ACTION_GO_LIVE -> onGoLive?.invoke()
             }
         }
     }
@@ -66,11 +73,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Register PiP control receiver
+        // Register media control receiver (PiP + notification actions)
+        val mediaFilter = IntentFilter().apply {
+            addAction(ACTION_PIP_CONTROL)
+            addAction(PlaybackService.ACTION_PLAY_PAUSE)
+            addAction(PlaybackService.ACTION_GO_LIVE)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(pipReceiver, IntentFilter(ACTION_PIP_CONTROL), RECEIVER_NOT_EXPORTED)
+            registerReceiver(mediaReceiver, mediaFilter, RECEIVER_EXPORTED)
         } else {
-            registerReceiver(pipReceiver, IntentFilter(ACTION_PIP_CONTROL))
+            registerReceiver(mediaReceiver, mediaFilter)
         }
 
         enableEdgeToEdge()
@@ -184,6 +196,9 @@ class MainActivity : ComponentActivity() {
                                         onRegisterPlayPauseCallback = { callback ->
                                             onPipPlayPause = callback
                                         },
+                                        onRegisterGoLiveCallback = { callback ->
+                                            onGoLive = callback
+                                        },
                                         onPlayingStateChanged = { playing ->
                                             isCurrentlyPlaying = playing
                                             if (_isInPipMode.value) {
@@ -273,7 +288,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         try {
-            unregisterReceiver(pipReceiver)
+            unregisterReceiver(mediaReceiver)
         } catch (_: Exception) {}
     }
 }
