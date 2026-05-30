@@ -201,7 +201,12 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             title = { Text("Changelog (v$appVersion)") },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Text("v2.0.0 (May 30, 2026)", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("v3.0.0 (May 30, 2026)", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("• Added massive World TV live channels feature", color = TextSecondary)
+                    Text("• Added dynamic floating channel count badge to Home Screen", color = TextSecondary)
+                    Text("• Improved group categorization and memory usage", color = TextSecondary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("v2.0.0 (May 29, 2026)", fontWeight = FontWeight.Bold, color = TextPrimary)
                     Text("• Added seamless Picture-in-Picture (PiP) support", color = TextSecondary)
                     Text("• Added beautiful rounded PiP notification icon", color = TextSecondary)
                     Text("• Fixed black screen issues for streams with query parameters", color = TextSecondary)

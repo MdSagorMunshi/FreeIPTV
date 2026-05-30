@@ -39,7 +39,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state.asStateFlow()
 
-    init { loadPlaylist() }
+    init { 
+        loadPlaylist()
+        loadWorldChannels()
+    }
 
     private fun loadPlaylist() {
         viewModelScope.launch(Dispatchers.IO) {

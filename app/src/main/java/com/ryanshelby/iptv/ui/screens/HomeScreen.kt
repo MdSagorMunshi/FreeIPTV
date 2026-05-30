@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -128,12 +129,38 @@ fun HomeScreen(
                         Spacer(Modifier.width(8.dp))
                         
                         // World Button
-                        IconButton(
-                            onClick = onOpenWorld,
-                            modifier = Modifier.size(36.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable(onClick = onOpenWorld)
                         ) {
-                            Icon(Icons.Default.Public, contentDescription = "World", tint = Purple40)
+                            val badgeTransition = rememberInfiniteTransition(label = "badgePulse")
+                            val badgeScale by badgeTransition.animateFloat(
+                                initialValue = 0.95f,
+                                targetValue = 1.05f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "scale"
+                            )
+                            val channelCountText = if (state.isWorldLoaded) "Click here for ${state.worldChannels.size} channels" else "Click here for world channels"
+                            
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Pink40,
+                                modifier = Modifier.padding(bottom = 2.dp).scale(badgeScale)
+                            ) {
+                                Text(
+                                    channelCountText, 
+                                    fontSize = 8.sp, 
+                                    fontWeight = FontWeight.Bold, 
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                            Icon(Icons.Default.Public, contentDescription = "World", tint = Purple40, modifier = Modifier.size(24.dp))
                         }
+                        Spacer(Modifier.width(12.dp))
                         
                         // About button
                         IconButton(

@@ -22,6 +22,12 @@
 
 ## 📝 Changelog
 
+### v3.0.0 (Latest)
+- **New Feature:** Added massive global live TV library via "World TV" button.
+- **New Feature:** Added dynamic floating channel count badge to Home Screen.
+- **Improvement:** Intelligent M3U tag categorization handles nested categories flawlessly.
+- **Performance:** Moved all massive M3U parsing to background thread optimizations.
+
 ### v2.0.0 (May 30, 2026)
 - **New Feature:** Added seamless Picture-in-Picture (PiP) support for background viewing.
 - **New Feature:** Added an in-app Changelog viewer on the About page.
