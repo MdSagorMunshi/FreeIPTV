@@ -217,19 +217,24 @@ class MainActivity : ComponentActivity() {
     }
 
     fun enterPipMode() {
-        val params = PictureInPictureParams.Builder()
+        val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .setActions(buildPipActions(isCurrentlyPlaying))
-            .build()
-        enterPictureInPictureMode(params)
+        // Android 14+: enable double-tap to toggle between mini and expanded PiP (YouTube-style)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            builder.setExpandedAspectRatio(Rational(16, 9))
+        }
+        enterPictureInPictureMode(builder.build())
     }
 
     private fun updatePipActions(isPlaying: Boolean) {
-        val params = PictureInPictureParams.Builder()
+        val builder = PictureInPictureParams.Builder()
             .setAspectRatio(Rational(16, 9))
             .setActions(buildPipActions(isPlaying))
-            .build()
-        setPictureInPictureParams(params)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            builder.setExpandedAspectRatio(Rational(16, 9))
+        }
+        setPictureInPictureParams(builder.build())
     }
 
     private fun buildPipActions(isPlaying: Boolean): List<RemoteAction> {
