@@ -7,7 +7,13 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.Icon
+import android.os.Build
 import android.os.IBinder
 
 class PlaybackService : Service() {
@@ -37,11 +43,15 @@ class PlaybackService : Service() {
         }
     }
 
+    private var largeIcon: Bitmap? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        // Pre-load and round the app icon for the large notification icon
+        largeIcon = createRoundedLargeIcon()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -55,6 +65,12 @@ class PlaybackService : Service() {
         return START_NOT_STICKY
     }
 
+    override fun onDestroy() {
+        largeIcon?.recycle()
+        largeIcon = null
+        super.onDestroy()
+    }
+
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -63,8 +79,29 @@ class PlaybackService : Service() {
         ).apply {
             description = "Playback controls for the current channel"
             setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    /**
+     * Creates a rounded large icon from the app's launcher icon for a polished look.
+     */
+    private fun createRoundedLargeIcon(): Bitmap {
+        val drawable = androidx.core.content.ContextCompat.getDrawable(this, R.mipmap.ic_launcher)
+        val size = 128
+        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        
+        if (drawable != null) {
+            val canvas = Canvas(output)
+            val path = android.graphics.Path().apply {
+                addRoundRect(RectF(0f, 0f, size.toFloat(), size.toFloat()), size / 2f, size / 2f, android.graphics.Path.Direction.CW)
+            }
+            canvas.clipPath(path)
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(canvas)
+        }
+        return output
     }
 
     private fun buildNotification(
@@ -72,7 +109,7 @@ class PlaybackService : Service() {
         channelGroup: String,
         isPlaying: Boolean
     ): Notification {
-        // Tap notification to open app
+        // ── Content intent: tap notification to return to app ──
         val contentIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).apply {
@@ -81,45 +118,66 @@ class PlaybackService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Play/Pause action
+        // ── Action: Play / Pause ──
         val playPauseIntent = PendingIntent.getBroadcast(
             this, 100,
             Intent(ACTION_PLAY_PAUSE).apply { `package` = packageName },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val playPauseIconRes = if (isPlaying) android.R.drawable.ic_media_pause
-            else android.R.drawable.ic_media_play
-        val playPauseTitle = if (isPlaying) "Pause" else "Play"
+        val playPauseIconRes = if (isPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
+        val playPauseLabel = if (isPlaying) "Pause" else "Play"
 
-        // Go Live action — reloads the stream to get back to real-time
+        // ── Action: Go Live (reload stream to real-time) ──
         val goLiveIntent = PendingIntent.getBroadcast(
             this, 101,
             Intent(ACTION_GO_LIVE).apply { `package` = packageName },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return Notification.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        // ── Build subtitle ──
+        val subtitle = buildString {
+            if (isPlaying) append("LIVE") else append("Paused")
+            if (channelGroup.isNotBlank()) {
+                append("  ·  ")
+                append(channelGroup)
+            }
+        }
+
+        // ── Notification ──
+        val builder = Notification.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notif)
+            .setLargeIcon(largeIcon)
             .setContentTitle(channelName)
-            .setContentText(if (channelGroup.isNotBlank()) "\uD83D\uDCFA $channelGroup" else "\uD83D\uDCFA Live TV")
+            .setContentText(subtitle)
+            .setSubText("FreeIPTV")
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setShowWhen(false)
-            .setColor(0xFF6C5CE7.toInt()) // Purple40 accent
+            .setColor(0xFF6C5CE7.toInt()) // Purple40 brand accent
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .addAction(
                 Notification.Action.Builder(
                     Icon.createWithResource(this, playPauseIconRes),
-                    playPauseTitle, playPauseIntent
+                    playPauseLabel, playPauseIntent
                 ).build()
             )
             .addAction(
                 Notification.Action.Builder(
-                    Icon.createWithResource(this, android.R.drawable.ic_popup_sync),
+                    Icon.createWithResource(this, R.drawable.ic_notif_live),
                     "Go Live", goLiveIntent
                 ).build()
             )
-            .setStyle(Notification.MediaStyle().setShowActionsInCompactView(0, 1))
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .build()
+            .setStyle(
+                Notification.MediaStyle()
+                    .setShowActionsInCompactView(0, 1)
+            )
+
+        // Ensure notification appears immediately (Android 12+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+
+        return builder.build()
     }
 }

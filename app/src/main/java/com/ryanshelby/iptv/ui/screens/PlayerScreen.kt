@@ -47,6 +47,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.common.MimeTypes
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.ryanshelby.iptv.PlaybackService
 import com.ryanshelby.iptv.R
 import com.ryanshelby.iptv.data.Channel
@@ -88,15 +91,27 @@ fun PlayerScreen(
 
     // ExoPlayer
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
-        }
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+            .setAllowCrossProtocolRedirects(true)
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build().apply {
+                playWhenReady = true
+            }
     }
 
     // Load channel
     LaunchedEffect(channel?.url) {
         channel?.url?.let { url ->
-            exoPlayer.setMediaItem(MediaItem.fromUri(url))
+            val mediaItem = MediaItem.Builder()
+                .setUri(url)
+                .setMimeType(MimeTypes.APPLICATION_M3U8)
+                .build()
+            exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
             exoPlayer.play()
         }
@@ -135,7 +150,11 @@ fun PlayerScreen(
     LaunchedEffect(Unit) {
         onRegisterGoLiveCallback?.invoke {
             currentChannel?.url?.let { url ->
-                exoPlayer.setMediaItem(MediaItem.fromUri(url))
+                val mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(MimeTypes.APPLICATION_M3U8)
+                    .build()
+                exoPlayer.setMediaItem(mediaItem)
                 exoPlayer.prepare()
                 exoPlayer.play()
             }
