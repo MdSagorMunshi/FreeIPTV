@@ -13,8 +13,10 @@ object M3UParser {
             if (line.startsWith("#EXTINF")) {
                 val name = line.substringAfter(",", "Unknown").trim()
                 val logo = Regex("""tvg-logo="(.*?)"""").find(line)?.groupValues?.get(1) ?: ""
-                var group = Regex("""group-title="(.*?)"""").find(line)?.groupValues?.get(1) ?: ""
-                group = group.trim().split(" ").joinToString(" ") { word ->
+                var groupRaw = Regex("""group-title="(.*?)"""").find(line)?.groupValues?.get(1) ?: ""
+                // Take only the first primary category if multiple exist
+                var group = groupRaw.substringBefore(";").substringBefore(",").trim()
+                group = group.split(" ").joinToString(" ") { word ->
                     word.lowercase().replaceFirstChar { char ->
                         if (char.isLowerCase()) char.titlecase(java.util.Locale.getDefault()) else char.toString()
                     }
