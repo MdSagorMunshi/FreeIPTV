@@ -22,7 +22,16 @@ data class AppState(
     val favorites: Set<String> = emptySet(),
     val updateRequiredUrl: String? = null,
     val isCheckingForUpdate: Boolean = false,
-    val toastMessage: String? = null
+    val toastMessage: String? = null,
+    val worldChannels: List<Channel> = emptyList(),
+    val filteredWorldChannels: List<Channel> = emptyList(),
+    val worldGroups: List<String> = emptyList(),
+    val selectedWorldGroup: String = "All",
+    val worldSearchQuery: String = "",
+    val currentWorldIndex: Int = -1,
+    val isWorldLoading: Boolean = false,
+    val isWorldLoaded: Boolean = false,
+    val isViewingWorld: Boolean = false
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -50,24 +59,36 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun selectChannel(index: Int) {
-        _state.value = _state.value.copy(currentIndex = index)
+    fun selectChannel(index: Int, isWorld: Boolean = false) {
+        if (isWorld) {
+            _state.value = _state.value.copy(currentWorldIndex = index, isViewingWorld = true)
+        } else {
+            _state.value = _state.value.copy(currentIndex = index, isViewingWorld = false)
+        }
     }
 
     fun nextChannel() {
-        val list = _state.value.filteredChannels
+        val list = if (_state.value.isViewingWorld) _state.value.filteredWorldChannels else _state.value.filteredChannels
         if (list.isEmpty()) return
-        val current = _state.value.currentIndex
+        val current = if (_state.value.isViewingWorld) _state.value.currentWorldIndex else _state.value.currentIndex
         val next = if (current + 1 >= list.size) 0 else current + 1
-        _state.value = _state.value.copy(currentIndex = next)
+        if (_state.value.isViewingWorld) {
+            _state.value = _state.value.copy(currentWorldIndex = next)
+        } else {
+            _state.value = _state.value.copy(currentIndex = next)
+        }
     }
 
     fun prevChannel() {
-        val list = _state.value.filteredChannels
+        val list = if (_state.value.isViewingWorld) _state.value.filteredWorldChannels else _state.value.filteredChannels
         if (list.isEmpty()) return
-        val current = _state.value.currentIndex
+        val current = if (_state.value.isViewingWorld) _state.value.currentWorldIndex else _state.value.currentIndex
         val prev = if (current - 1 < 0) list.size - 1 else current - 1
-        _state.value = _state.value.copy(currentIndex = prev)
+        if (_state.value.isViewingWorld) {
+            _state.value = _state.value.copy(currentWorldIndex = prev)
+        } else {
+            _state.value = _state.value.copy(currentIndex = prev)
+        }
     }
 
     fun search(query: String) {
@@ -98,11 +119,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (s.searchQuery.isNotBlank()) {
             list = list.filter { it.name.contains(s.searchQuery, ignoreCase = true) }
         }
-        _state.value = s.copy(filteredChannels = list)
+        
+        var worldList = s.worldChannels
+        if (s.selectedWorldGroup == "Favorites") {
+            worldList = worldList.filter { s.favorites.contains(it.url) }
+        } else if (s.selectedWorldGroup != "All") {
+            worldList = worldList.filter { it.group == s.selectedWorldGroup }
+        }
+        if (s.worldSearchQuery.isNotBlank()) {
+            worldList = worldList.filter { it.name.contains(s.worldSearchQuery, ignoreCase = true) }
+        }
+        
+        _state.value = s.copy(filteredChannels = list, filteredWorldChannels = worldList)
     }
 
     fun getCurrentChannel(): Channel? {
         val s = _state.value
+        if (s.isViewingWorld) {
+            return if (s.currentWorldIndex in s.filteredWorldChannels.indices) s.filteredWorldChannels[s.currentWorldIndex] else null
+        }
         return if (s.currentIndex in s.filteredChannels.indices) s.filteredChannels[s.currentIndex] else null
     }
 
@@ -173,5 +208,41 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearToast() {
         _state.value = _state.value.copy(toastMessage = null)
+    }
+
+    fun searchWorld(query: String) {
+        _state.value = _state.value.copy(worldSearchQuery = query)
+        applyFilters()
+    }
+
+    fun selectWorldGroup(group: String) {
+        _state.value = _state.value.copy(selectedWorldGroup = group)
+        applyFilters()
+    }
+
+    fun setIsViewingWorld(isWorld: Boolean) {
+        _state.value = _state.value.copy(isViewingWorld = isWorld)
+    }
+
+    fun loadWorldChannels() {
+        if (_state.value.isWorldLoaded || _state.value.isWorldLoading) return
+        _state.value = _state.value.copy(isWorldLoading = true)
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val input = getApplication<Application>().assets.open("world.m3u")
+                val channels = M3UParser.parse(input)
+                val groups = listOf("All") + channels.map { it.group }.filter { it.isNotBlank() }.distinct().sorted()
+                _state.value = _state.value.copy(
+                    worldChannels = channels,
+                    filteredWorldChannels = channels,
+                    worldGroups = groups,
+                    isWorldLoading = false,
+                    isWorldLoaded = true
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isWorldLoading = false, toastMessage = "Error loading World TV list: ${e.message}")
+            }
+        }
     }
 }

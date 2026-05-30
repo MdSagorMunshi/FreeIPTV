@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ryanshelby.iptv.ui.screens.HomeScreen
+import com.ryanshelby.iptv.ui.screens.WorldScreen
 import com.ryanshelby.iptv.ui.screens.OnboardingScreen
 import com.ryanshelby.iptv.ui.screens.PlayerScreen
 import com.ryanshelby.iptv.ui.screens.SplashScreen
@@ -217,7 +218,62 @@ class MainActivity : ComponentActivity() {
                                         onGroupSelect = { viewModel.selectGroup(it) },
                                         onToggleFavorite = { viewModel.toggleFavorite(it) },
                                         onOpenPlayer = { showPlayer = true },
-                                        onOpenAbout = { currentScreen = AppScreen.ABOUT }
+                                        onOpenAbout = { currentScreen = AppScreen.ABOUT },
+                                        onOpenWorld = { currentScreen = AppScreen.WORLD }
+                                    )
+                                }
+                            }
+                        }
+                        AppScreen.WORLD -> {
+                            AnimatedContent(
+                                targetState = showPlayer,
+                                transitionSpec = {
+                                    if (targetState) {
+                                        slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)) togetherWith
+                                            slideOutHorizontally(tween(300)) { -it } + fadeOut(tween(200))
+                                    } else {
+                                        slideInHorizontally(tween(300)) { -it } + fadeIn(tween(300)) togetherWith
+                                            slideOutHorizontally(tween(300)) { it } + fadeOut(tween(200))
+                                    }
+                                },
+                                label = "world_nav"
+                            ) { isPlayer ->
+                                if (isPlayer) {
+                                    PlayerScreen(
+                                        channel = viewModel.getCurrentChannel(),
+                                        onBack = { showPlayer = false },
+                                        onNext = { viewModel.nextChannel() },
+                                        onPrev = { viewModel.prevChannel() },
+                                        channelIndex = state.currentWorldIndex,
+                                        totalChannels = state.filteredWorldChannels.size,
+                                        isInPipMode = pipMode,
+                                        onEnterPip = { enterPipMode() },
+                                        onRegisterPlayPauseCallback = { callback ->
+                                            onPipPlayPause = callback
+                                        },
+                                        onRegisterGoLiveCallback = { callback ->
+                                            onGoLive = callback
+                                        },
+                                        onPlayingStateChanged = { playing ->
+                                            isCurrentlyPlaying = playing
+                                            if (_isInPipMode.value) {
+                                                updatePipActions(playing)
+                                            }
+                                        }
+                                    )
+                                } else {
+                                    WorldScreen(
+                                        state = state,
+                                        viewModel = viewModel,
+                                        onChannelClick = { index ->
+                                            viewModel.selectChannel(index, isWorld = true)
+                                            showPlayer = true
+                                        },
+                                        onOpenPlayer = { showPlayer = true },
+                                        onBack = { 
+                                            viewModel.setIsViewingWorld(false)
+                                            currentScreen = AppScreen.MAIN 
+                                        }
                                     )
                                 }
                             }
@@ -294,5 +350,5 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class AppScreen {
-    SPLASH, ONBOARDING, MAIN, ABOUT
+    SPLASH, ONBOARDING, MAIN, WORLD, ABOUT
 }
